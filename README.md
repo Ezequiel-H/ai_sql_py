@@ -96,6 +96,8 @@ To efficiently handle large datasets and improve query performance:
 
 **Horizontal Scaling:** Deploy multiple instances of the model service behind a load balancer to efficiently handle concurrent requests.
 
+**Agent-Based Processing:** Use agents to dynamically route queries, distribute workloads, and enable resource scaling and fault tolerance for model services.
+
 ### 3. User Interface Scalability
 
 #### Interface Optimization
