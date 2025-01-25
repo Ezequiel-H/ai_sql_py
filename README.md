@@ -85,6 +85,7 @@ question (String, required): The input question.
 To efficiently handle large datasets and improve query performance:
 
 **Index Optimization:** Regularly analyze and optimize indexes to enhance the performance of frequently used queries.
+
 **Replication:** Implement database replication to distribute read loads across multiple replicas while using a primary database for write operations.
 
 ### 2. Scalability of the Text-to-SQL Model Service or LLM for Generating Natural Language Responses
@@ -92,6 +93,7 @@ To efficiently handle large datasets and improve query performance:
 #### Model and Resource Optimization
 
 **Improved Models:** Use models hosted in independent containers, allowing the allocation of additional resources as needed.
+
 **Horizontal Scaling:** Deploy multiple instances of the model service behind a load balancer to efficiently handle concurrent requests.
 
 ### 3. User Interface Scalability
@@ -99,5 +101,6 @@ To efficiently handle large datasets and improve query performance:
 #### Interface Optimization
 
 **Developing with React:** Opt for React instead of Flask for the user interface, as it offers a more robust and scalable solution for modern applications.
+
 **Load Balancing:** Deploy multiple instances of the user interface service behind a load balancer to ensure an even distribution of incoming traffic and improve responsiveness under high demand.
 
