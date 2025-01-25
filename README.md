@@ -71,7 +71,7 @@ Body:
 
 question (String, required): The input question.
 
-####Example:
+#### Example:
 
 {
   "question": "What is the total revenue for the last quarter?"
