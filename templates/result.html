@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results</title>
+</head>
+<body>
+    <h1>{{ nl_question }}</h1>
+    <p><strong>SQL Query:</strong> {{ sql_query }}</p>
+    <p><strong>Query Results:</strong> {{ sql_query_result }}</p>
+    <p><strong>Natural Language Response:</strong> {{ nl_result }}</p>
+    <form method="GET" action="/">
+        <button type="submit">Submit Another Request</button>
+    </form>
+</body>
+</html>

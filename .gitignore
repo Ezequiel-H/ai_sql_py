@@ -1,0 +1,6 @@
+.env
+data.csv
+database.db
+
+__pycache__/
+old/
