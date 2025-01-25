@@ -2,19 +2,28 @@
 
 import sqlite3
 import torch
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import T5Tokenizer, T5ForConditionalGeneration, GPTNeoForCausalLM, GPT2Tokenizer
 
 # SQLite Database Configuration
 table_name = "sales"
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # SQL Model Configuration
 sql_tokenizer = T5Tokenizer.from_pretrained('t5-small')
-sql_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 sql_model = T5ForConditionalGeneration.from_pretrained('cssupport/t5-small-awesome-text-to-sql')
-sql_model = sql_model.to(sql_device)
+sql_model = sql_model.to(device)
 sql_model.eval()
+
+# LLM Model Configuration
+llm_model_name = "EleutherAI/gpt-neo-125M"
+llm_model = GPTNeoForCausalLM.from_pretrained(llm_model_name)
+llm_tokenizer = GPT2Tokenizer.from_pretrained(llm_model_name)
+
+if llm_tokenizer.pad_token is None:
+    llm_tokenizer.pad_token = llm_tokenizer.eos_token
 
 # Fetch table schema
 def get_table_schema():
@@ -39,13 +48,13 @@ The database is called 'sales' and has the following schema:
 
 ### SQL Query
 """
-    inputs = sql_tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(sql_device)
+    inputs = sql_tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(device)
     with torch.no_grad():
         outputs = sql_model.generate(**inputs, max_length=512)
     generated_sql = sql_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     return generated_sql
-    return "SELECT week_day, SUM(total) AS total_revenue FROM sales GROUP BY week_day ORDER BY total_revenue DESC LIMIT 1;"
+    # return "SELECT week_day, SUM(total) AS total_revenue FROM sales GROUP BY week_day ORDER BY total_revenue DESC LIMIT 1;"
 
 # Run SQL query
 def execute_query(query):
@@ -63,9 +72,9 @@ def get_nl_response(question, sql_query, query_result):
     prompt = f"""
 Given the following inputs, generate a clear and concise natural language response:
 
-1. **Question:** {question}
-2. **SQL Query:** {sql_query}
-3. **Query Result:** {query_result}
+1. Question: {question}
+2. SQL Query: {sql_query}
+3. Query Result: {query_result}
 
 If `query_result` contains data:
 - Summarize the result in a user-friendly way.
@@ -76,15 +85,16 @@ If `query_result` is empty:
 
 Example Output:
 "The day with the highest revenue is Monday, with a total of $1500.00."
-"""
-    inputs = tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(device)
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=512)
-    nl_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    print(nl_response)
+Response:
+"""
+    inputs = llm_tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = llm_model.generate(**inputs, max_length=512)
+    nl_response = llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
+
     return nl_response
-    return "The best sales day was Friday, with a total revenue of $37,583,125."
+    # return "The best sales day was Friday, with a total revenue of $37,583,125."
 
 # Process natural language question
 def process_nl_question(nl_input):
