@@ -60,3 +60,20 @@ To stop the running containers:
 docker-compose down
 ```
 
+## API Documentation
+
+### /nl-to-sql
+Method: POST
+Converts a natural language question into SQL, executes it, and returns the query, result, and explanation.
+
+#### Request
+Body:
+
+question (String, required): The input question.
+
+####Example:
+
+{
+  "question": "What is the total revenue for the last quarter?"
+}
+
