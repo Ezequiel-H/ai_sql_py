@@ -1,29 +1,33 @@
-# functions funcionando con mal modelo
-
 import sqlite3
-import torch
-from transformers import T5Tokenizer, T5ForConditionalGeneration, GPTNeoForCausalLM, GPT2Tokenizer
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Initialize OpenAI client
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # SQLite Database Configuration
 table_name = "sales"
 conn = sqlite3.connect('database.db', check_same_thread=False)
 cursor = conn.cursor()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# SQL Model Configuration
-sql_tokenizer = T5Tokenizer.from_pretrained('t5-small')
-sql_model = T5ForConditionalGeneration.from_pretrained('cssupport/t5-small-awesome-text-to-sql')
-sql_model = sql_model.to(device)
-sql_model.eval()
-
-# LLM Model Configuration
-llm_model_name = "EleutherAI/gpt-neo-125M"
-llm_model = GPTNeoForCausalLM.from_pretrained(llm_model_name)
-llm_tokenizer = GPT2Tokenizer.from_pretrained(llm_model_name)
-
-if llm_tokenizer.pad_token is None:
-    llm_tokenizer.pad_token = llm_tokenizer.eos_token
+# OpenAI API Calls
+def call_openai_chat_model(prompt):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+        max_tokens=1000,
+    )
+    return response.choices[0].message.content
 
 # Fetch table schema
 def get_table_schema():
@@ -36,25 +40,23 @@ def get_table_schema():
 def translate_to_sql(natural_query):
     schema = get_table_schema()
     prompt = f"""
-### Task
-Write an SQL query to answer the following question based on the provided database schema.
+### Task:
+Write only the SQL query to answer the following question based on the provided database schema.
 
-### Database
-The database is called 'sales' and has the following schema:
+### Database:
+The database is called '{table_name}' and has the following schema:
 {schema}
 
-### Question
+### Question:
 {natural_query}
 
-### SQL Query
+### Example:
+Your response format should only be:
+SELECT week_day, SUM(total) AS total_sales FROM sales GROUP BY week_day ORDER BY total_sales DESC LIMIT 1;
+Without any additional text or special characters.
 """
-    inputs = sql_tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(device)
-    with torch.no_grad():
-        outputs = sql_model.generate(**inputs, max_length=512)
-    generated_sql = sql_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-    return generated_sql
-    # return "SELECT week_day, SUM(total) AS total_revenue FROM sales GROUP BY week_day ORDER BY total_revenue DESC LIMIT 1;"
+    return call_openai_chat_model(prompt)
 
 # Run SQL query
 def execute_query(query):
@@ -79,27 +81,21 @@ Given the following inputs, generate a clear and concise natural language respon
 If `query_result` contains data:
 - Summarize the result in a user-friendly way.
 - Relate it back to the `question`.
+- Add appropriate units to the values if applicable (e.g., use '$' for monetary values, '%' for percentages, or any relevant unit).
+- Ensure the response is clear and concise.
 
 If `query_result` is empty:
 - Inform the user no data was found.
 
-Example Output:
-"The day with the highest revenue is Monday, with a total of $1500.00."
-
 Response:
 """
-    inputs = llm_tokenizer(prompt, padding=True, truncation=True, return_tensors="pt").to(device)
-    with torch.no_grad():
-        outputs = llm_model.generate(**inputs, max_length=512)
-    nl_response = llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    return nl_response
-    # return "The best sales day was Friday, with a total revenue of $37,583,125."
+    return call_openai_chat_model(prompt)
 
 # Process natural language question
 def process_nl_question(nl_input):
     if not nl_input:
         raise ValueError("Input is required")
+   
     sql_query = translate_to_sql(nl_input)
     sql_query_result = execute_query(sql_query)
     nl_result = get_nl_response(nl_input, sql_query, sql_query_result)
